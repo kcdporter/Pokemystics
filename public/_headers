@@ -1,12 +1,17 @@
 # Security headers for the deployed static site.
-# Applied by Netlify and Cloudflare Pages (copied to dist/ root at build).
+# Applied by Netlify, Cloudflare Pages, and Cloudflare Workers Static Assets
+# (copied to dist/ root at build).
 # GitHub Pages does NOT support custom headers — prefer Cloudflare Pages /
 # Netlify if you want these enforced.
+#
+# frame-ancestors allows embedding on kiraporter.ca (the personal site this app
+# is embedded into) and localhost during dev. X-Frame-Options is intentionally
+# omitted: its ALLOW-FROM directive is dead in Firefox/Chrome, and a DENY /
+# SAMEORIGIN value would override frame-ancestors in some browsers.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'self' https://kiraporter.ca https://www.kiraporter.ca http://localhost:* http://127.0.0.1:*; object-src 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
-  X-Frame-Options: DENY
   Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()
 
 # Long-cache the immutable, content-hashed build assets
