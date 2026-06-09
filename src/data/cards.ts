@@ -230,7 +230,7 @@ export const CARDS: Card[] = [
     dex: 123,
     types: ["Bug", "Flying"],
     up: "The blade falls true, and clean. Scyther cuts without cruelty, severing only what must be severed; cause meets consequence along a perfect, impartial edge. Face the truth and accept the verdict it carries.",
-    upKeys: ["Truth", "Cause & effect", "Balance"],
+    upKeys: ["Truth", "Consequence", "Balance"],
     rev: "The scales tilt beneath a hidden thumb. Accountability is dodged, judgment is clouded by bias, and the cut lands crooked. A dishonesty indulged now carves a far deeper wound later.",
     revKeys: ["Injustice", "Dishonesty", "Imbalance"],
   },
@@ -352,7 +352,7 @@ export const CARDS: Card[] = [
     up: "In one small body, the whole of life is written. Mew carries the DNA of every creature that is or was or will be — beginning and ending folded into a single dance of completion. The circle closes; you have arrived.",
     upKeys: ["Completion", "Wholeness", "Fulfillment"],
     rev: "The circle stays open by a hair's breadth. So near to wholeness, and yet one final thread still dangles loose; the closure is delayed, the journey not quite finished. Honor the last step before you declare the end.",
-    revKeys: ["Incompletion", "Loose ends", "Almost there"],
+    revKeys: ["Incompletion", "Loose ends", "Unfinished"],
   },
 ];
 
