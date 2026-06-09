@@ -37,6 +37,8 @@ export function SpreadScreen({
           {allRevealed ? "" : "Touch each card to turn it"}
         </div>
       </div>
+      {/* the user's question frames the reading: shown above the cards */}
+      {question ? <div className="spread-question">{"“" + question + "”"}</div> : null}
       <div className="spread">
         {draw.map((d, i) => (
           <div className="slot in" key={i}>
@@ -59,8 +61,6 @@ export function SpreadScreen({
           </div>
         ))}
       </div>
-      {/* the user's question sits under the cards, above the finalized answer */}
-      {question ? <div className="spread-question">{"“" + question + "”"}</div> : null}
       {!allRevealed ? (
         <div style={{ textAlign: "center", marginTop: "26px" }}>
           <button className="btn-ghost" onClick={revealAll}>
