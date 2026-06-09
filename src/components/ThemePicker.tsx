@@ -9,8 +9,8 @@ export function ThemePicker({
   setTheme: (t: ThemeKey) => void;
 }) {
   return (
-    <div className="theme-picker" role="radiogroup" aria-label="Visual universe">
-      <span className="tp-label">Universe</span>
+    <div className="theme-picker" role="radiogroup" aria-label="Visual theme">
+      <span className="tp-label">Theme</span>
       {THEMES.map((t) => (
         <button
           key={t.k}

@@ -1,8 +1,9 @@
-/* The woven three-card interpretation, revealed once all cards are turned. */
+/* The woven N-card interpretation, revealed once all cards are turned. */
 import { Fragment, useCallback, useMemo, useState, type CSSProperties } from "react";
-import { POSITIONS, TYPES } from "../data/cards";
+import { TYPES, type TypeName } from "../data/cards";
 import { buildShareUrl } from "../share";
 import type { DrawnCard } from "../types";
+import type { Universe } from "../universes";
 
 // Headline clause pools. Each entry follows plural keywords (so verb agreement is plural).
 // Past pool uses past-tense verbs, present uses present-tense, future uses "will + base".
@@ -110,15 +111,20 @@ const pickOne = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
 type Trend = "strong-good" | "good" | "turning-good" | "turning-bad" | "bad" | "strong-bad";
 
 function computeTrend(draw: DrawnCard[]): Trend {
-  const futureRev = draw[2].reversed;
+  // The last card in the spread is the "future-most" position in every universe
+  // (Future in Gen I, Star in Gen II). Its orientation drives the primary signal;
+  // the share of reversed cards modulates intensity.
+  const last = draw[draw.length - 1];
+  const futureRev = last.reversed;
   const reversedCount = draw.filter((d) => d.reversed).length;
+  const ratio = reversedCount / draw.length;
   if (!futureRev) {
     if (reversedCount === 0) return "strong-good";
-    if (reversedCount === 1) return "good";
+    if (ratio <= 1 / 3) return "good";
     return "turning-good";
   }
-  if (reversedCount === 3) return "strong-bad";
-  if (reversedCount === 2) return "bad";
+  if (reversedCount === draw.length) return "strong-bad";
+  if (ratio >= 2 / 3) return "bad";
   return "turning-bad";
 }
 
@@ -170,20 +176,84 @@ const TREND_TONE: Record<Trend, "good" | "warn"> = {
   "strong-bad": "warn",
 };
 
+// Gen II per-position verb pools for the 5-card day/night spread.
+// One verb is picked per position, stable per draw.
+const DAWN_VERBS = ["opened with", "rose under", "broke as", "first lit on"];
+const DAY_VERBS = ["holds", "shines on", "carries", "walks through"];
+const DUSK_VERBS = ["turns through", "shifts into", "softens to", "settles on"];
+const NIGHT_VERBS = ["hides", "reveals", "veils with", "keeps close to"];
+const STAR_VERBS = ["points to", "shines toward", "guides through", "steadies upon"];
+
+// Spoken flavor for each dominant type — used only when a type clearly dominates.
+const TYPE_FLAVOR: Partial<Record<TypeName, string>> = {
+  Psychic: "thought rules the air",
+  Dark: "shadow has the wider stride",
+  Fire: "passion runs hot through it",
+  Water: "the tide is patient",
+  Steel: "structure is the order of the day",
+  Ground: "the earth is firm beneath",
+  Flying: "things move quickly here",
+  Grass: "growth is already underway",
+  Electric: "the air crackles",
+  Normal: "the ordinary asserts itself",
+  Fighting: "courage will be asked of you",
+  Poison: "what is offered may be tinged",
+  Rock: "endurance is the lesson",
+  Bug: "small movements add up",
+  Ghost: "the past has not finished speaking",
+  Dragon: "fate stirs in the deep places",
+  Ice: "patience is cold here",
+  Fairy: "the unseen is at play",
+};
+
+interface TypeBalance {
+  type: TypeName;
+  count: number;
+  flavor: string;
+}
+
+// Tally each type across the draw (a card can carry 1–2 types). When any type
+// occupies 3+ slots out of however many cards were drawn, surface it as the
+// dominant current of the spread. Otherwise return null and we omit the line.
+function computeTypeBalance(draw: DrawnCard[]): TypeBalance | null {
+  const tally = new Map<TypeName, number>();
+  for (const d of draw) {
+    for (const t of d.card.types) tally.set(t, (tally.get(t) ?? 0) + 1);
+  }
+  let best: { type: TypeName; count: number } | null = null;
+  for (const [type, count] of tally) {
+    if (!best || count > best.count) best = { type, count };
+  }
+  if (!best || best.count < 3) return null;
+  return {
+    type: best.type,
+    count: best.count,
+    flavor: TYPE_FLAVOR[best.type] ?? "the type sings through the spread",
+  };
+}
+
+function numberWord(n: number): string {
+  return ["zero", "one", "two", "three", "four", "five", "six", "seven"][n] ?? String(n);
+}
+
 export function ReadingOut({
+  universe,
   draw,
   question,
   onAgain,
   onNew,
   show,
 }: {
+  universe: Universe;
   draw: DrawnCard[];
   question: string;
   onAgain: () => void;
   onNew: () => void;
   show: boolean;
 }) {
+  const positions = universe.positions;
   const meaning = (d: DrawnCard) => (d.reversed ? d.card.rev : d.card.up);
+  const shadow = (d: DrawnCard) => (d.reversed ? d.card.revShadow : d.card.upShadow);
   const keys = (d: DrawnCard) => (d.reversed ? d.card.revKeys : d.card.upKeys);
   // split prose at the first sentence break so we can show the opening as a bold lead
   const splitLead = (text: string): { lead: string; rest: string } => {
@@ -191,16 +261,39 @@ export function ReadingOut({
     return m ? { lead: m[1], rest: m[2] } : { lead: text, rest: "" };
   };
   const synth = useMemo(() => {
-    const k = draw.map((d) => keys(d));
     const trend = computeTrend(draw);
+    // Keyword-sentence headline is built for the classic past/present/future shape.
+    const hasThreeClauseHeadline = draw.length === 3;
+    // The 5-card day/night spread gets its own sentence shape — one verb per
+    // position, picked from a pool, stable per draw.
+    const hasGen2Headline = draw.length === 5;
+    const gen2Clauses = hasGen2Headline
+      ? [
+          { verb: pickOne(DAWN_VERBS), keyword: keys(draw[0])[0] },
+          { verb: pickOne(DAY_VERBS), keyword: keys(draw[1])[0] },
+          { verb: pickOne(DUSK_VERBS), keyword: keys(draw[2])[0] },
+          { verb: pickOne(NIGHT_VERBS), keyword: keys(draw[3])[0] },
+          { verb: pickOne(STAR_VERBS), keyword: keys(draw[4])[0] },
+        ]
+      : null;
+    const typeBalance = universe.hasTypeBalance ? computeTypeBalance(draw) : null;
     return {
-      past: { keys: k[0], clause: pickOne(PAST_CLAUSES) },
-      present: { keys: k[1], clause: pickOne(PRESENT_CLAUSES) },
-      future: { keys: k[2], clause: pickOne(FUTURE_CLAUSES) },
+      hasThreeClauseHeadline,
+      past: hasThreeClauseHeadline
+        ? { keys: keys(draw[0]), clause: pickOne(PAST_CLAUSES) }
+        : null,
+      present: hasThreeClauseHeadline
+        ? { keys: keys(draw[1]), clause: pickOne(PRESENT_CLAUSES) }
+        : null,
+      future: hasThreeClauseHeadline
+        ? { keys: keys(draw[2]), clause: pickOne(FUTURE_CLAUSES) }
+        : null,
+      gen2Clauses,
+      typeBalance,
       verdict: pickOne(VERDICTS[trend]),
       tone: TREND_TONE[trend],
     };
-  }, [draw]);
+  }, [draw, universe]);
   // render a list of keywords as highlighted spans joined with commas + "and".
   // First keyword keeps its title-case (it leads the clause); the rest are lowercased
   // so the list reads as natural prose.
@@ -218,13 +311,14 @@ export function ReadingOut({
   const [shareLabel, setShareLabel] = useState("Share");
   const onShare = useCallback(async () => {
     // a link that brings the recipient back to this exact spread
-    const url = buildShareUrl(question, draw);
+    const url = buildShareUrl(question, draw, universe.id);
     const lines = draw.map(
       (d, i) =>
-        `${POSITIONS[i].label}: ${d.card.mon} — ${d.card.arcana}${d.reversed ? " (Reversed)" : ""}`,
+        `${positions[i].label}: ${d.card.mon} — ${d.card.arcana}${d.reversed ? " (Reversed)" : ""}`,
     );
+    const heading = positions.map((p) => p.label).join(" · ");
     const text =
-      `Pokemystics ✦ ${question ? `“${question}”` : "Past · Present · Future"}\n` + lines.join("\n");
+      `Pokemystics ✦ ${question ? `“${question}”` : heading}\n` + lines.join("\n");
     try {
       if (typeof navigator !== "undefined" && navigator.share) {
         await navigator.share({ title: "Pokemystics", text, url });
@@ -240,19 +334,22 @@ export function ReadingOut({
 
   return (
     <div className={"reading-out" + (show ? " show" : "")}>
-      <div className="ro-title">{question ? "The deck answers" : "Your three-card spread"}</div>
+      <div className="ro-title">
+        {question ? "The deck answers" : `Your ${positions.length}-card spread`}
+      </div>
       <div className="ro-rule" />
       <div className="ro-rows">
         {draw.map((d, i) => {
           const keyList = keys(d);
           const { lead, rest } = splitLead(meaning(d));
+          const shadowText = universe.hasShadowVoice ? shadow(d) : undefined;
           return (
             <div
               className="ro-row"
               key={i}
               style={{ "--type": TYPES[d.card.types[0]].c } as CSSProperties}
             >
-              <div className="ro-pos">{POSITIONS[i].label}</div>
+              <div className="ro-pos">{positions[i].label}</div>
               <div>
                 <div className="ro-kicker">{keyList[0]}</div>
                 <div className="ro-card-name">
@@ -267,6 +364,7 @@ export function ReadingOut({
                 </div>
                 <p className="ro-lead">{lead}</p>
                 {rest && <p className="ro-text">{rest}</p>}
+                {shadowText ? <p className="ro-shadow">{shadowText}</p> : null}
                 <div className="ro-keys">
                   {keyList.map((kk, j) => (
                     <span className="ro-key" key={j}>
@@ -279,11 +377,43 @@ export function ReadingOut({
           );
         })}
       </div>
-      <p className="ro-headline">
-        <span className={`ro-verdict ${synth.tone}`}>{synth.verdict}</span>
-        {renderKeys(synth.past.keys)} {synth.past.clause}; {renderKeys(synth.present.keys)}{" "}
-        {synth.present.clause}; and {renderKeys(synth.future.keys)} {synth.future.clause}.
-      </p>
+      <div className="ro-headline">
+        <div className={`ro-verdict ${synth.tone}`}>{synth.verdict}</div>
+        {synth.hasThreeClauseHeadline && synth.past && synth.present && synth.future ? (
+          <p className="ro-headline-prose">
+            {renderKeys(synth.past.keys)} {synth.past.clause};{" "}
+            {renderKeys(synth.present.keys)} {synth.present.clause}; and{" "}
+            {renderKeys(synth.future.keys)} {synth.future.clause}.
+          </p>
+        ) : null}
+        {synth.gen2Clauses ? (
+          <p className="ro-headline-prose">
+            {synth.gen2Clauses.map((c, i) => {
+              const isLast = i === synth.gen2Clauses!.length - 1;
+              const separator = i === 0 ? "" : isLast ? "; and " : "; ";
+              // Each clause leads with its position label. "Star" takes "the"
+              // mid-sentence; the others stand alone (Dawn, Day, Dusk, Night).
+              const rawLabel = positions[i].label;
+              const label = rawLabel === "Star" ? "the Star" : rawLabel;
+              return (
+                <Fragment key={i}>
+                  {separator}
+                  {label} {c.verb} <span className="em">{c.keyword}</span>
+                </Fragment>
+              );
+            })}
+            .
+          </p>
+        ) : null}
+        {synth.typeBalance ? (
+          <p className="ro-balance">
+            <span className="em">
+              {numberWord(synth.typeBalance.count)} {synth.typeBalance.type}
+            </span>{" "}
+            types thread the spread — {synth.typeBalance.flavor}.
+          </p>
+        ) : null}
+      </div>
       <div className="ro-actions">
         <button className="btn-ghost primary" onClick={onAgain}>
           Draw again

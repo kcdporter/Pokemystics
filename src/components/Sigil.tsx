@@ -120,6 +120,15 @@ const GLYPHS: Record<GlyphKey, (k: string) => ReactNode[]> = {
   normal: (k) => [
     <path key={k} fill="none" d="M50 22 L57 43 L79 43 L61 56 L68 78 L50 64 L32 78 L39 56 L21 43 L43 43 Z" />,
   ],
+  steel: (k) => [
+    <path key={k} fill="none" d="M50 22 L72 35 L72 65 L50 78 L28 65 L28 35 Z" />,
+    <line key={k + "x1"} x1={32} y1={38} x2={68} y2={62} />,
+    <line key={k + "x2"} x1={68} y1={38} x2={32} y2={62} />,
+  ],
+  dark: (k) => [
+    <path key={k + "e"} fill="none" d="M22 50 Q50 24 78 50 Q50 76 22 50 Z" />,
+    <circle key={k + "p"} cx={50} cy={50} r={6} />,
+  ],
 };
 
 // ---------- The Sigil ----------

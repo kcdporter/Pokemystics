@@ -17,7 +17,9 @@ export type GlyphKey =
   | "rock"
   | "ghost"
   | "dragon"
-  | "fairy";
+  | "fairy"
+  | "steel"
+  | "dark";
 
 export type TypeName =
   | "Normal"
@@ -35,7 +37,9 @@ export type TypeName =
   | "Rock"
   | "Ghost"
   | "Dragon"
-  | "Fairy";
+  | "Fairy"
+  | "Steel"
+  | "Dark";
 
 export interface TypeInfo {
   /** swatch / glyph color */
@@ -57,13 +61,20 @@ export interface Card {
   /** upright prose, in the creature's voice */
   up: string;
   upKeys: string[];
+  /** Optional shadow voice for upright — a brief inverse-perspective whisper
+      ("…yet/still/…even so") rendered after the main prose in universes that
+      opt in via {@link Universe.hasShadowVoice}. */
+  upShadow?: string;
   /** reversed prose */
   rev: string;
   revKeys: string[];
+  /** Optional shadow voice for reversed — the gift within the warning. */
+  revShadow?: string;
 }
 
 export interface Position {
-  key: "past" | "present" | "future";
+  /** Stable identifier (advisory: ReadingOut keys synthesis off draw index, not this). */
+  key: string;
   label: string;
   sub: string;
   line: string;
@@ -87,6 +98,8 @@ export const TYPES: Record<TypeName, TypeInfo> = {
   Ghost: { c: "#8a6fc4", glyph: "ghost" },
   Dragon: { c: "#7a52f8", glyph: "dragon" },
   Fairy: { c: "#f29ec0", glyph: "fairy" },
+  Steel: { c: "#b9b9c8", glyph: "steel" },
+  Dark: { c: "#6b6378", glyph: "dark" },
 };
 
 export const CARDS: Card[] = [

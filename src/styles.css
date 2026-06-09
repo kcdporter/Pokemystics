@@ -178,6 +178,21 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .tp-swatch:hover { transform: translateY(-2px) scale(1.08); }
 .tp-swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--bg-solid), 0 0 14px var(--card-glow); transform: scale(1.12); }
 
+/* Universe (Pokémon generation) picker — chip-style next to the theme picker */
+.universe-picker { display: flex; gap: 8px; align-items: center; }
+.universe-picker .tp-label { font-size: 13px; letter-spacing: .25em; text-transform: uppercase; color: var(--ink-dim); margin-right: 4px; }
+.up-chip {
+  font-family: var(--font-display); letter-spacing: .14em; text-transform: uppercase; font-size: 12px;
+  padding: 6px 12px; border-radius: 999px;
+  background: transparent; color: var(--ink-dim);
+  border: 1px solid var(--line);
+  transition: color .25s, border-color .25s, background .25s, transform .2s;
+}
+[data-theme="dmg"] .up-chip { border-radius: 0; }
+.up-chip:hover:not([aria-disabled="true"]) { color: var(--ink); border-color: var(--accent); transform: translateY(-1px); }
+.up-chip.active { color: var(--bg-solid); background: var(--accent); border-color: var(--accent); }
+.up-chip[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+
 /* settings gear */
 .gear {
   display: grid; place-items: center;
@@ -293,9 +308,9 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .spread-head .hint { font-family: var(--font-display); letter-spacing:.26em; text-transform: uppercase; font-size: 13px; color: var(--ink-dim); transition: opacity .4s; }
 
 .spread {
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: clamp(18px, 4vw, 64px);
-  width: 100%; max-width: 1000px; margin: clamp(14px,3vh,40px) auto 0;
+  display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: clamp(12px, 2.4vw, 56px);
+  width: 100%; max-width: min(1200px, 96vw); margin: clamp(14px,3vh,40px) auto 0;
   perspective: 1600px;
 }
 .slot { display: flex; flex-direction: column; align-items: center; }
@@ -306,7 +321,10 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 /* ============================================================
    CARD
    ============================================================ */
-.card-outer { width: clamp(180px, 24vw, 248px); aspect-ratio: 5 / 7; position: relative; }
+/* Card width scales with column count (--cols inherits from .spread).
+   3-card spreads keep the original ~180–248px range; 5-card spreads shrink so
+   the whole row stays within the page. */
+.card-outer { width: clamp(120px, calc(72vw / var(--cols, 3)), 248px); aspect-ratio: 5 / 7; position: relative; }
 .card {
   position: relative; width: 100%; height: 100%;
   transform-style: preserve-3d;
@@ -548,15 +566,34 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   color: var(--ink); margin: 0 0 10px; font-weight: 500;
 }
 .ro-text { font-size: 16px; line-height: 1.6; color: var(--ink-dim); margin: 0; }
+.ro-shadow {
+  font-style: italic; font-size: 15.5px; line-height: 1.55;
+  color: color-mix(in srgb, var(--ink-dim) 80%, var(--reversed-tint));
+  margin: 8px 0 0; padding-left: 12px;
+  border-left: 2px solid color-mix(in srgb, var(--type, var(--accent)) 40%, transparent);
+}
+[data-theme="dmg"] .ro-shadow { border-left-color: var(--accent); }
 .ro-keys { display:flex; flex-wrap:wrap; gap: 8px; margin-top: 14px; }
 .ro-key { font-family: var(--font-display); font-size: 10.5px; letter-spacing:.14em; text-transform: uppercase; color: var(--ink-dim); border: 1px solid var(--line); border-radius: 20px; padding: 4px 12px; }
 [data-theme="dmg"] .ro-key { border-radius: 0; }
 .ro-headline {
-  text-align:center; font-style: italic; font-size: clamp(19px,2.4vw,24px); line-height:1.55;
+  text-align:center;
   color: var(--ink); margin: clamp(20px,3.4vh,34px) auto 0; max-width: 32em;
   padding: 18px 24px;
   border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft);
 }
+.ro-headline-prose {
+  font-style: italic; font-size: clamp(19px,2.4vw,24px); line-height: 1.55;
+  margin: 0;
+}
+.ro-headline-prose + .ro-headline-prose { margin-top: 10px; }
+.ro-balance {
+  margin: 14px 0 0;
+  font-size: clamp(14px,1.6vw,16px); line-height: 1.45;
+  font-style: italic; color: var(--ink-dim);
+  letter-spacing: .01em;
+}
+.ro-balance .em { color: var(--accent); font-style: normal; font-weight: 600; }
 .ro-headline .em { color: var(--accent); font-style: normal; font-weight: 600; }
 [data-theme="dmg"] .ro-headline { border-color: var(--accent); }
 .ro-verdict {
@@ -601,6 +638,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   .brand .sub { font-size: clamp(10px, 3.4vw, 14px); letter-spacing: .2em; }
   .topbar-right { flex-wrap: wrap; justify-content: center; gap: 10px; }
   .theme-picker { flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .universe-picker { flex-wrap: wrap; justify-content: center; gap: 8px; }
   .set-panel { right: 50%; transform: translateX(50%); width: min(280px, 92vw); }
   @keyframes setIn { from { opacity: 0; transform: translateX(50%) translateY(-8px); } to { opacity: 1; transform: translateX(50%); } }
 }

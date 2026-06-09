@@ -5,17 +5,25 @@
    Source: PokeAPI/sprites (https://github.com/PokeAPI/sprites) — official
    artwork PNGs (transparent background), which we render as type-tinted
    silhouettes via CSS mask in the Sigil component. */
-import { readFileSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const cards = readFileSync(join(root, "src/data/cards.ts"), "utf8");
 
-// pull every `dex: NNN` from the deck
-const dexes = [...cards.matchAll(/\bdex:\s*(\d+)/g)].map((m) => Number(m[1]));
+// Scan every universe deck (src/universes/gen*.ts) plus the original cards.ts
+// so adding a new generation just means adding its file, not editing this script.
+const sources = [
+  join(root, "src/data/cards.ts"),
+  ...readdirSync(join(root, "src/universes"))
+    .filter((f) => f.endsWith(".ts") && f !== "types.ts" && f !== "index.ts")
+    .map((f) => join(root, "src/universes", f)),
+];
+const dexes = sources.flatMap((p) =>
+  [...readFileSync(p, "utf8").matchAll(/\bdex:\s*(\d+)/g)].map((m) => Number(m[1])),
+);
 const unique = [...new Set(dexes)].sort((a, b) => a - b);
-console.log(`Deck has ${unique.length} unique dex numbers:`, unique.join(", "));
+console.log(`Decks have ${unique.length} unique dex numbers:`, unique.join(", "));
 
 const outDir = join(root, "public/mons");
 mkdirSync(outDir, { recursive: true });
