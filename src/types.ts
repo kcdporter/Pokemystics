@@ -48,6 +48,6 @@ export const DEFAULT_TWEAKS: Tweaks = {
   tilt: 1,
   foil: 1,
   reduceMotion: false,
-  reversedChance: 42,
+  reversedChance: 30,
   particles: true,
 };

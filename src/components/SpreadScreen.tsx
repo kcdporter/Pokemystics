@@ -1,76 +1,155 @@
-/* The three-card spread + inline reading (phase === "spread"). */
-import { POSITIONS } from "../data/cards";
+/* The constellation-based deal flow (phase === "spread"):
+   1. waiting — center deck at viewport center; click to begin.
+   2. dealing — deck fans out and exits; constellations translate to spread
+      positions (driven from App via the ConstellationField).
+   3. ready   — each constellation cross-fades into its card; a "See my reading"
+      button appears.
+   Clicking "See my reading" hands off to ReadingOut (the row layout). */
+import type { CSSProperties } from "react";
+import type { Universe } from "../universes";
 import type { DrawnCard, Tweaks } from "../types";
+import type { DealState } from "../App";
 import { PokeCard } from "./PokeCard";
 import { ReadingOut } from "./ReadingOut";
+import { CardBack } from "./Sigil";
 
 export function SpreadScreen({
+  universe,
   draw,
-  revealed,
-  reveal,
   parallax,
   tweaks,
   question,
   showReading,
+  dealState,
+  spreadTargets,
+  beginDealing,
+  onSeeReading,
   onAgain,
   onNew,
-  revealAll,
 }: {
+  universe: Universe;
   draw: DrawnCard[];
-  revealed: boolean[];
-  reveal: (i: number) => void;
   parallax: { x: number; y: number };
   tweaks: Tweaks;
   question: string;
   showReading: boolean;
+  dealState: DealState;
+  spreadTargets: { x: number; y: number }[];
+  beginDealing: () => void;
+  onSeeReading: () => void;
   onAgain: () => void;
   onNew: () => void;
-  revealAll: () => void;
 }) {
-  const allRevealed = revealed.every(Boolean) && draw.length === 3;
-  const depths = [1.0, 0.6, 1.3]; // parallax depth per slot
+  const positions = universe.positions;
+  const heading = positions.map((p) => p.label).join(" · ");
+  const depthFor = (i: number) => 0.6 + ((i * 37) % 90) / 100;
+
   return (
     <div className="reading-stage fade-in">
-      <div className="spread-head">
-        <div className="q">Past · Present · Future</div>
-        <div className="hint" style={{ opacity: allRevealed ? 0 : 1 }}>
-          {allRevealed ? "" : "Touch each card to turn it"}
-        </div>
-      </div>
-      {/* the user's question frames the reading: shown above the cards */}
-      {question ? <div className="spread-question">{"“" + question + "”"}</div> : null}
-      <div className="spread">
-        {draw.map((d, i) => (
-          <div className="slot in" key={i}>
-            <div className="slot-label">{POSITIONS[i].label}</div>
-            <div className="slot-sub">{POSITIONS[i].sub}</div>
-            <div className="deal-anim" style={{ animationDelay: i * 0.18 + "s" }}>
-              <PokeCard
-                card={d.card}
-                reversed={d.reversed}
-                revealed={revealed[i]}
-                onReveal={() => reveal(i)}
-                parallax={{ x: parallax.x * 10 * depths[i], y: parallax.y * 8 * depths[i] }}
-                levDelay={i * 0.5}
-                intensity={tweaks.tilt}
-                foil={tweaks.foil}
-                particles={tweaks.particles}
-                reduceMotion={tweaks.reduceMotion}
-              />
+      <div
+        className={"spread-stage" + (showReading ? " stage-out" : "")}
+        aria-hidden={showReading}
+      >
+        {dealState !== "ready" ? (
+          <div className="spread-head">
+            <div className="q">{heading}</div>
+            <div className="hint" style={{ opacity: dealState === "waiting" ? 1 : 0 }}>
+              {dealState === "waiting" ? "Click the deck to deal" : ""}
             </div>
           </div>
-        ))}
-      </div>
-      {!allRevealed ? (
-        <div style={{ textAlign: "center", marginTop: "26px" }}>
-          <button className="btn-ghost" onClick={revealAll}>
-            Reveal all
-          </button>
+        ) : null}
+        {question ? (
+          <div className="spread-question">{"“" + question + "”"}</div>
+        ) : null}
+
+        <div className="deck-modal" aria-hidden={dealState !== "waiting"}>
+          {dealState === "waiting" ? (
+            <button
+              type="button"
+              className="center-deck"
+              onClick={beginDealing}
+              aria-label="Deal the cards"
+            >
+              <div className="center-deck-stack">
+                {[0, 1, 2, 3, 4].map((k) => (
+                  <div
+                    key={k}
+                    className="center-deck-card"
+                    style={{ "--k": k } as CSSProperties}
+                  >
+                    <CardBack />
+                  </div>
+                ))}
+              </div>
+            </button>
+          ) : (
+            <div className="center-deck-exit">
+              <div className="center-deck-stack">
+                {[0, 1, 2, 3, 4].map((k) => (
+                  <div
+                    key={k}
+                    className="center-deck-card"
+                    style={{ "--k": k } as CSSProperties}
+                  >
+                    <CardBack />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      ) : null}
+
+        {dealState !== "waiting" && spreadTargets.length === draw.length ? (
+          <div className="card-positions">
+            {draw.map((d, i) => {
+              const t = spreadTargets[i];
+              return (
+                <div
+                  key={i}
+                  className={"card-position" + (dealState === "ready" ? " is-ready" : "")}
+                  style={{ left: t.x + "%", top: t.y + "%" } as CSSProperties}
+                >
+                  <div
+                    className={
+                      "card-materialize" + (dealState === "ready" ? " is-ready" : "")
+                    }
+                  >
+                    <PokeCard
+                      card={d.card}
+                      reversed={d.reversed}
+                      revealed
+                      parallax={{
+                        x: parallax.x * 6 * depthFor(i),
+                        y: parallax.y * 5 * depthFor(i),
+                      }}
+                      levDelay={i * 0.5}
+                      intensity={tweaks.tilt}
+                      foil={tweaks.foil}
+                      reduceMotion={tweaks.reduceMotion}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            {dealState === "ready" ? (
+              <button
+                type="button"
+                className="see-reading-btn"
+                onClick={onSeeReading}
+              >
+                See my reading
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+      </div>
+
       <ReadingOut
+        universe={universe}
         draw={draw}
         question={question}
+        tweaks={tweaks}
         onAgain={onAgain}
         onNew={onNew}
         show={showReading}

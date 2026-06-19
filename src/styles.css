@@ -136,13 +136,53 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  overflow: hidden;
+  --topbar-h: 76px;
+}
+/* Lock the page to one viewport across the intro, deal, and flipped views
+   — every screen but the row reading sits inside a single dvh with no scroll.
+   The reading-row state adds .stage-out on .spread-stage, which lifts the lock. */
+.stage:not(:has(.spread-stage.stage-out)) {
+  height: 100dvh; min-height: 0; overflow: hidden;
 }
 /* drifting starfield */
 .starfield { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-.star { position: absolute; border-radius: 50%; background: var(--ink); opacity: .0; animation: twinkle var(--tw,6s) ease-in-out infinite; }
+.starfield .star { position: absolute; border-radius: 50%; background: var(--ink); opacity: .0; animation: twinkle var(--tw,6s) ease-in-out infinite; }
 @keyframes twinkle { 0%,100% { opacity: .05; } 50% { opacity: var(--tw-max,.5); } }
 [data-theme="dmg"] .starfield { display: none; }
+
+/* ---------- Constellation field (Pokémon silhouettes rendered as stars) ---------- */
+.constellation-field {
+  position: fixed; left: 0; right: 0;
+  top: var(--topbar-h, 0);
+  height: calc(100dvh - var(--topbar-h, 0px));
+  z-index: 1; pointer-events: none; overflow: hidden;
+}
+[data-theme="dmg"] .constellation-field { display: none; }
+.constellation-slot {
+  position: absolute; transform: translate(-50%, -50%);
+  opacity: var(--brightness, 0.22);
+  transition: left 1.4s cubic-bezier(.4,0,.3,1), top 1.4s cubic-bezier(.4,0,.3,1), opacity .9s ease;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 60%, transparent));
+}
+.constellation-slot.selected { filter: drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 75%, transparent)); }
+.constellation circle.star {
+  fill: var(--accent);
+  /* per-star duration variation set inline; default 6s if unset */
+  animation: constTwinkle var(--dur, 6s) ease-in-out infinite;
+  transform-box: fill-box; transform-origin: center;
+}
+.constellation circle.star.no-twinkle { animation: none; opacity: 1; }
+.constellation line.constellation-line {
+  stroke: var(--accent);
+  stroke-width: 0.25;
+  stroke-linecap: round;
+  opacity: .22;
+}
+.constellation-slot.selected line.constellation-line { opacity: .45; }
+@keyframes constTwinkle {
+  0%, 100% { opacity: .6; }
+  50%      { opacity: .85; }
+}
 
 /* ---------- Top bar ---------- */
 .topbar {
@@ -152,7 +192,14 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   padding: 22px 30px 10px;
 }
 .topbar-right { display: flex; align-items: center; gap: 14px; position: relative; }
+.topbar-heading {
+  font-style: italic; font-size: clamp(16px, 1.8vw, 22px);
+  color: var(--ink); line-height: 1.1;
+  padding: 0 4px;
+}
 .brand { display: flex; align-items: baseline; gap: 12px; }
+.brand-btn { background: transparent; border: none; padding: 0; cursor: pointer; font: inherit; color: inherit; text-align: left; }
+.brand-btn:hover .mark { filter: brightness(1.15); }
 .brand .mark {
   font-family: var(--font-deco);
   font-size: 22px; letter-spacing: .22em; text-transform: uppercase;
@@ -177,6 +224,21 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .tp-swatch[data-k="vapor"]::after { background: linear-gradient(135deg, #00f0ff, #ff4ecd, #ff7a59); }
 .tp-swatch:hover { transform: translateY(-2px) scale(1.08); }
 .tp-swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--bg-solid), 0 0 14px var(--card-glow); transform: scale(1.12); }
+
+/* Universe (Pokémon generation) picker — chip-style next to the theme picker */
+.universe-picker { display: flex; gap: 8px; align-items: center; }
+.universe-picker .tp-label { font-size: 13px; letter-spacing: .25em; text-transform: uppercase; color: var(--ink-dim); margin-right: 4px; }
+.up-chip {
+  font-family: var(--font-display); letter-spacing: .14em; text-transform: uppercase; font-size: 12px;
+  padding: 6px 12px; border-radius: 999px;
+  background: transparent; color: var(--ink-dim);
+  border: 1px solid var(--line);
+  transition: color .25s, border-color .25s, background .25s, transform .2s;
+}
+[data-theme="dmg"] .up-chip { border-radius: 0; }
+.up-chip:hover:not([aria-disabled="true"]) { color: var(--ink); border-color: var(--accent); transform: translateY(-1px); }
+.up-chip.active { color: var(--bg-solid); background: var(--accent); border-color: var(--accent); }
+.up-chip[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
 
 /* settings gear */
 .gear {
@@ -247,6 +309,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   font-size: clamp(18px, 2.4vw, 25px); line-height: 1.5; color: var(--ink-dim);
   max-width: 30em; margin: 14px auto 0; font-style: italic;
 }
+.intro .lede-em { color: var(--accent); font-style: normal; font-weight: 600; }
 .deck-emblem { margin: 30px auto 8px; width: 150px; height: 210px; position: relative; }
 
 /* question */
@@ -293,20 +356,205 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .spread-head .hint { font-family: var(--font-display); letter-spacing:.26em; text-transform: uppercase; font-size: 13px; color: var(--ink-dim); transition: opacity .4s; }
 
 .spread {
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: clamp(18px, 4vw, 64px);
-  width: 100%; max-width: 1000px; margin: clamp(14px,3vh,40px) auto 0;
+  display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: clamp(12px, 2.4vw, 56px);
+  width: 100%; max-width: min(1200px, 96vw); margin: clamp(14px,3vh,40px) auto 0;
   perspective: 1600px;
 }
+/* Traditional 5-card cross: Star top, Dawn–Day–Dusk across the middle, Night bottom.
+   Slot order in markup is Dawn(1) Day(2) Dusk(3) Night(4) Star(5). */
+.spread.cross {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: auto auto auto;
+  row-gap: clamp(16px, 2.6vh, 36px);
+  max-width: min(900px, 96vw);
+  align-items: end;
+}
+.spread.cross .slot:nth-child(1) { grid-column: 1; grid-row: 2; }
+.spread.cross .slot:nth-child(2) { grid-column: 2; grid-row: 2; }
+.spread.cross .slot:nth-child(3) { grid-column: 3; grid-row: 2; }
+.spread.cross .slot:nth-child(4) { grid-column: 2; grid-row: 3; }
+.spread.cross .slot:nth-child(5) { grid-column: 2; grid-row: 1; }
 .slot { display: flex; flex-direction: column; align-items: center; }
 .slot-label { font-family: var(--font-display); letter-spacing:.24em; text-transform: uppercase; font-size: 14px; color: var(--accent); margin-bottom: 4px; white-space: nowrap; opacity:.0; transform: translateY(8px); transition: opacity .6s, transform .6s; }
 .slot-sub { font-size: 14px; font-style: italic; color: var(--ink-dim); margin-bottom: 30px; white-space: nowrap; opacity:0; transition: opacity .6s .1s; }
 .slot.in .slot-label, .slot.in .slot-sub { opacity:1; transform:none; }
+/* placeholder that holds the card's space while the slot is waiting to be dealt */
+.empty-slot {
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  border-radius: 14px;
+  border: 1.5px dashed color-mix(in srgb, var(--card-edge) 55%, transparent);
+  background: color-mix(in srgb, var(--card-bg) 28%, transparent);
+}
+[data-theme="dmg"] .empty-slot { border-radius: 4px; }
+/* During the dealing phase the spread stays compact enough to share the page
+   with the deck above it. Cards in the reading-row layout (.ro-card-slot)
+   keep their own larger size. */
+.spread .card-outer, .spread .empty-slot { width: clamp(140px, 14vw, 190px); }
+.spread .slot-sub { margin-bottom: clamp(8px, 1.4vh, 18px); }
+.spread.cross { row-gap: clamp(10px, 1.8vh, 22px); margin-top: clamp(8px, 1.6vh, 22px); }
+/* clickable deck below the spread; each click deals the next card face-up */
+.deal-area {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  margin: clamp(10px, 2vh, 22px) auto 0;
+}
+.deal-area-top { margin: 0 auto clamp(8px, 1.8vh, 22px); }
+.deal-deck {
+  position: relative; width: clamp(76px, 10vh, 110px); aspect-ratio: 5 / 7;
+  background: transparent; border: none; padding: 0; cursor: pointer;
+  transition: transform .25s ease, filter .25s ease;
+}
+.deal-deck:hover { transform: translateY(-4px); filter: drop-shadow(0 6px 18px rgba(0,0,0,.45)); }
+.deal-deck:active { transform: translateY(-1px) scale(.98); }
+.deal-deck-stack { position: relative; width: 100%; height: 100%; }
+.deal-deck-card {
+  position: absolute; inset: 0;
+  border-radius: 14px; background: var(--card-bg);
+  border: 1.5px solid var(--card-edge);
+  box-shadow: 0 14px 30px -14px rgba(0,0,0,.7);
+  transform: translate(calc(var(--k) * -3px), calc(var(--k) * -2px)) rotate(calc(var(--k) * -1.5deg));
+  overflow: hidden;
+}
+[data-theme="dmg"] .deal-deck-card { border-radius: 4px; }
+.deal-hint { font-family: var(--font-display); letter-spacing: .26em; text-transform: uppercase; font-size: 12px; color: var(--ink-dim); }
+.deal-skip { font-size: 12px; }
+
+/* ============================================================
+   CONSTELLATION DEAL FLOW (center deck → cards materialize)
+   ============================================================ */
+.spread-stage { position: relative; flex: 1; width: 100%; opacity: 1; transition: opacity .55s ease, transform .55s ease; }
+.spread-stage.stage-out { opacity: 0; transform: scale(.96); pointer-events: none; }
+
+/* Transparent full-page overlay above the constellation background. Uses
+   100dvh so it tracks the actual visible viewport (not the layout viewport
+   that includes any hidden chrome / docked DevTools area). */
+.deck-modal {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 100dvh;
+  z-index: 30;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.deck-modal > * { pointer-events: auto; }
+
+.center-deck {
+  width: clamp(160px, 28dvh, 300px); aspect-ratio: 5 / 7;
+  background: transparent; border: none; padding: 0; cursor: pointer;
+  transition: transform .25s ease, filter .25s ease;
+}
+.center-deck:hover { transform: translateY(-6px); filter: drop-shadow(0 8px 22px rgba(0,0,0,.55)); }
+.center-deck:active { transform: translateY(-1px) scale(.98); }
+.center-deck-stack { position: relative; width: 100%; height: 100%; }
+.center-deck-card {
+  position: absolute; inset: 0;
+  border-radius: 14px; background: var(--card-bg);
+  border: 1.5px solid var(--card-edge);
+  box-shadow: 0 14px 30px -12px rgba(0,0,0,.7);
+  transform: translate(calc(var(--k) * -3px), calc(var(--k) * -2px)) rotate(calc(var(--k) * -1.5deg));
+  overflow: hidden;
+}
+[data-theme="dmg"] .center-deck-card { border-radius: 4px; }
+
+/* Exit animation — the deck stays mounted briefly so each card-back fans
+   outward before fading. Triggered by switching from waiting to dealing. */
+.center-deck-exit {
+  width: clamp(160px, 28dvh, 300px); aspect-ratio: 5 / 7;
+  pointer-events: none;
+}
+.center-deck-exit .center-deck-card {
+  animation: centerDeckFan .9s cubic-bezier(.3,0,.4,1) calc(var(--k) * .06s) forwards;
+}
+@keyframes centerDeckFan {
+  0%   { transform: translate(calc(var(--k) * -3px), calc(var(--k) * -2px)) rotate(calc(var(--k) * -1.5deg)); opacity: 1; }
+  100% {
+    transform:
+      translate(calc((var(--k) - 2) * 220px), calc((var(--k) - 2) * -160px))
+      rotate(calc((var(--k) - 2) * 18deg)) scale(.6);
+    opacity: 0;
+  }
+}
+
+/* Card layout during dealing/ready — each card sits at a viewport % position
+   that matches the constellation field's selected positions. */
+.card-positions {
+  position: fixed; left: 0; right: 0;
+  top: var(--topbar-h, 0);
+  height: calc(100dvh - var(--topbar-h, 0px));
+  z-index: 28; pointer-events: none;
+}
+.card-position {
+  position: absolute; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  pointer-events: auto;
+}
+.card-position-label {
+  font-family: var(--font-display); letter-spacing: .26em; text-transform: uppercase;
+  font-size: 11px; color: var(--accent);
+  opacity: 0; transition: opacity .6s ease .4s;
+}
+.card-position.is-ready .card-position-label { opacity: 1; }
+.card-materialize {
+  width: clamp(135px, 19.5dvh, 225px);
+  opacity: 0; transform: scale(.85);
+  transition: opacity .7s ease, transform .7s ease;
+}
+.card-materialize.is-ready { opacity: 1; transform: scale(1); }
+.card-materialize .card-outer { width: 100%; }
+
+/* See my reading — hidden by default, revealed on top of the center card
+   when any card is hovered. The center card sits at x:50%, y:42% in both
+   spread shapes (Day in the cross, middle card in the line). */
+.see-reading-btn {
+  position: absolute; left: 50%; top: 42%;
+  transform: translate(-50%, calc(-50% + 6px));
+  font-family: var(--font-display); letter-spacing: .2em; text-transform: uppercase;
+  font-size: 13px; padding: 11px 22px;
+  color: var(--ink); background: color-mix(in srgb, var(--card-bg) 80%, transparent);
+  border: 1px solid var(--accent); border-radius: 999px; cursor: pointer;
+  backdrop-filter: blur(4px);
+  z-index: 5;
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s ease, transform .3s ease, color .2s ease, box-shadow .25s ease;
+}
+.card-positions:has(.card-position:hover) .see-reading-btn,
+.card-positions:focus-within .see-reading-btn,
+.see-reading-btn:hover {
+  opacity: 1; pointer-events: auto;
+  transform: translate(-50%, -50%);
+}
+.see-reading-btn:hover {
+  color: var(--accent);
+  box-shadow: 0 10px 22px -10px var(--card-glow);
+}
+/* Touch devices have no hover — always show the button so mobile users
+   can find their way to the reading. */
+@media (hover: none) {
+  .see-reading-btn {
+    opacity: 1; pointer-events: auto;
+    transform: translate(-50%, -50%);
+  }
+}
+/* Wrapper around the spread + deck; fades and collapses when the reading takes over. */
+.spread-wrap {
+  width: 100%;
+  display: flex; flex-direction: column; align-items: center;
+  opacity: 1; max-height: 1400px; transform: none;
+  transition: opacity .45s ease, max-height .55s ease, transform .45s ease;
+  overflow: hidden;
+}
+.spread-wrap.spread-out {
+  opacity: 0; max-height: 0; transform: scale(.94);
+  pointer-events: none;
+}
 
 /* ============================================================
    CARD
    ============================================================ */
-.card-outer { width: clamp(180px, 24vw, 248px); aspect-ratio: 5 / 7; position: relative; }
+/* Card width scales with column count (--cols inherits from .spread).
+   3-card spreads keep the original ~180–248px range; 5-card spreads shrink so
+   the whole row stays within the page. */
+.card-outer { width: clamp(120px, calc(72vw / var(--cols, 3)), 248px); aspect-ratio: 5 / 7; position: relative; }
 .card {
   position: relative; width: 100%; height: 100%;
   transform-style: preserve-3d;
@@ -476,49 +724,11 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   100% { filter: none; }
 }
 
-/* ============================================================
-   PARTICLES
-   ============================================================ */
-.burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: 5; pointer-events: none; }
-.spark {
-  position: absolute; left: 0; top: 0; width: 7px; height: 7px; border-radius: 50%;
-  background: var(--accent); box-shadow: 0 0 8px var(--accent);
-  transform: translate(-50%, -50%);
-  animation: sparkfly var(--dur,.9s) ease-out forwards;
-}
-@keyframes sparkfly {
-  0% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.2); }
-}
-
-/* ============================================================
-   SHUFFLE / DEAL deck
-   ============================================================ */
-.shuffle-zone { position: relative; height: 320px; width: 100%; display:grid; place-items:center; z-index: 20; }
-.deck-card {
-  position: absolute; width: clamp(150px,18vw,190px); aspect-ratio: 5/7;
-  border-radius: 14px; background: var(--card-bg);
-  border: 1.5px solid var(--card-edge);
-  box-shadow: 0 18px 40px -16px rgba(0,0,0,.8);
-  will-change: transform;
-}
-[data-theme="dmg"] .deck-card { border-radius:4px; }
-.deck-card .back-svg { position: absolute; inset: 0; width: 100%; height:100%; }
-.shuffle-caption { position: absolute; bottom: 6px; left:0; right:0; text-align:center; font-family: var(--font-display); letter-spacing:.3em; text-transform: uppercase; font-size: 13px; color: var(--ink-dim); }
-.glitch-text { position: relative; }
-.glitch-text::before, .glitch-text::after {
-  content: attr(data-t); position:absolute; left:0; top:0; width:100%;
-  clip-path: inset(0 0 60% 0);
-}
-.glitch-text::before { color: var(--accent); transform: translateX(-2px); animation: glitchA .5s steps(2) infinite; }
-.glitch-text::after { color: var(--accent-2); clip-path: inset(55% 0 0 0); transform: translateX(2px); animation: glitchB .5s steps(2) infinite; }
-@keyframes glitchA { 0%,100%{transform:translateX(-2px)} 50%{transform:translateX(2px)} }
-@keyframes glitchB { 0%,100%{transform:translateX(2px)} 50%{transform:translateX(-3px)} }
 
 /* ============================================================
    READING PANEL
    ============================================================ */
-.reading-out { width: 100%; max-width: 900px; margin: clamp(20px,4vh,46px) auto 0; opacity:0; transform: translateY(28px); transition: opacity .9s ease, transform .9s ease; }
+.reading-out { width: 100%; max-width: 1080px; margin: clamp(20px,4vh,46px) auto 0; opacity:0; transform: translateY(28px); transition: opacity .9s ease, transform .9s ease; }
 .reading-out.show { opacity:1; transform:none; }
 /* the question, shown under the cards and above the reading answer */
 .spread-question { text-align:center; font-style: italic; font-size: clamp(20px,2.8vw,30px); line-height:1.3; color: var(--ink); max-width: 24em; margin: clamp(14px,2.4vh,24px) auto clamp(18px,3vh,32px); }
@@ -526,14 +736,16 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .reading-out .ro-rule { width: 120px; height:1px; background: linear-gradient(90deg,transparent,var(--accent),transparent); margin: 10px auto 26px; }
 .ro-rows { display: grid; gap: 18px; }
 .ro-row {
-  display: grid; grid-template-columns: 70px 1fr; gap: 20px; align-items: start;
+  display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: start;
   background: var(--panel); border: 1px solid var(--line-soft);
   border-left: 3px solid color-mix(in srgb, var(--type, var(--accent)) 60%, var(--accent));
   border-radius: 8px; padding: 18px 22px; backdrop-filter: blur(6px);
 }
 [data-theme="dmg"] .ro-row { border-radius: 0; backdrop-filter:none; border-left-color: var(--accent); }
-.ro-pos { font-family: var(--font-display); letter-spacing:.14em; text-transform: uppercase; font-size: 12px; color: color-mix(in srgb, var(--type, var(--accent)) 55%, var(--accent)); writing-mode: vertical-rl; transform: rotate(180deg); justify-self:center; }
-[data-theme="dmg"] .ro-pos { color: var(--accent); }
+/* Every row's card uses the same fixed width so they line up across rows
+   regardless of how much prose the text column carries. */
+.ro-card-slot { width: clamp(140px, 17vw, 200px); }
+.ro-card-slot .card-outer { width: 100%; height: auto; }
 .ro-kicker {
   font-family: var(--font-display); font-size: 10.5px; letter-spacing:.28em; text-transform: uppercase;
   color: color-mix(in srgb, var(--type, var(--accent)) 70%, var(--accent));
@@ -548,15 +760,34 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   color: var(--ink); margin: 0 0 10px; font-weight: 500;
 }
 .ro-text { font-size: 16px; line-height: 1.6; color: var(--ink-dim); margin: 0; }
+.ro-shadow {
+  font-style: italic; font-size: 15.5px; line-height: 1.55;
+  color: color-mix(in srgb, var(--ink-dim) 80%, var(--reversed-tint));
+  margin: 8px 0 0; padding-left: 12px;
+  border-left: 2px solid color-mix(in srgb, var(--type, var(--accent)) 40%, transparent);
+}
+[data-theme="dmg"] .ro-shadow { border-left-color: var(--accent); }
 .ro-keys { display:flex; flex-wrap:wrap; gap: 8px; margin-top: 14px; }
 .ro-key { font-family: var(--font-display); font-size: 10.5px; letter-spacing:.14em; text-transform: uppercase; color: var(--ink-dim); border: 1px solid var(--line); border-radius: 20px; padding: 4px 12px; }
 [data-theme="dmg"] .ro-key { border-radius: 0; }
 .ro-headline {
-  text-align:center; font-style: italic; font-size: clamp(19px,2.4vw,24px); line-height:1.55;
+  text-align:center;
   color: var(--ink); margin: clamp(20px,3.4vh,34px) auto 0; max-width: 32em;
   padding: 18px 24px;
   border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft);
 }
+.ro-headline-prose {
+  font-style: italic; font-size: clamp(19px,2.4vw,24px); line-height: 1.55;
+  margin: 0;
+}
+.ro-headline-prose + .ro-headline-prose { margin-top: 10px; }
+.ro-balance {
+  margin: 14px 0 0;
+  font-size: clamp(14px,1.6vw,16px); line-height: 1.45;
+  font-style: italic; color: var(--ink-dim);
+  letter-spacing: .01em;
+}
+.ro-balance .em { color: var(--accent); font-style: normal; font-weight: 600; }
 .ro-headline .em { color: var(--accent); font-style: normal; font-weight: 600; }
 [data-theme="dmg"] .ro-headline { border-color: var(--accent); }
 .ro-verdict {
@@ -591,9 +822,9 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 
 @media (max-width: 720px) {
   .spread { gap: 26px; grid-template-columns: 1fr; max-width: 320px; }
+  .spread.cross { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; max-width: 360px; }
   .slot { margin-bottom: 6px; }
-  .ro-row { grid-template-columns: 28px 1fr; gap: 12px; padding: 16px; }
-  .ro-pos { font-size: 10px; }
+  .ro-row { grid-template-columns: auto 1fr; gap: 14px; padding: 14px; }
   /* header: stack, shrink, and let the brand wrap so it never overflows */
   .topbar { flex-direction: column; gap: 12px; padding: 16px 14px 8px; }
   .brand { flex-wrap: wrap; justify-content: center; gap: 4px 9px; max-width: 100%; }
@@ -601,26 +832,10 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
   .brand .sub { font-size: clamp(10px, 3.4vw, 14px); letter-spacing: .2em; }
   .topbar-right { flex-wrap: wrap; justify-content: center; gap: 10px; }
   .theme-picker { flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .universe-picker { flex-wrap: wrap; justify-content: center; gap: 8px; }
   .set-panel { right: 50%; transform: translateX(50%); width: min(280px, 92vw); }
   @keyframes setIn { from { opacity: 0; transform: translateX(50%) translateY(-8px); } to { opacity: 1; transform: translateX(50%); } }
 }
 
-/* shuffle riffle */
-@keyframes shuffleRiffle {
-  0%   { transform: translate(0,0) rotate(0); }
-  25%  { transform: translate(var(--sx), -46px) rotate(var(--sr)); }
-  50%  { transform: translate(calc(var(--sx) * -1), 12px) rotate(calc(var(--sr) * -1)); }
-  75%  { transform: translate(var(--sx2), -22px) rotate(var(--sr2)); }
-  100% { transform: translate(0,0) rotate(0); }
-}
-/* deal-in entrance for each spread card */
-.deal-anim { animation: dealIn .8s cubic-bezier(.2,.8,.2,1) backwards; }
-@keyframes dealIn {
-  0%   { opacity: 0; transform: translateY(-70px) rotateZ(-8deg) scale(.82); filter: blur(3px); }
-  60%  { opacity: 1; }
-  100% { opacity: 1; transform: none; filter: none; }
-}
-
 [data-reduce-motion="1"] * { animation-duration: .001s !important; transition-duration: .12s !important; }
 [data-reduce-motion="1"] .levitate { animation: none !important; }
-[data-reduce-motion="1"] .deck-card { animation: none !important; }
