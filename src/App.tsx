@@ -326,9 +326,9 @@ export default function App() {
         </button>
         <div className="topbar-right">
           {phase === "spread" && dealState === "ready" ? (
-            <div className="topbar-heading">
-              {currentUniverse.positions.map((p) => p.label).join(" · ")}
-            </div>
+            question ? (
+              <div className="topbar-heading">{"“" + question + "”"}</div>
+            ) : null
           ) : (
             <>
               <UniversePicker universe={universe} setUniverse={changeUniverse} />

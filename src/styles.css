@@ -140,9 +140,14 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 }
 /* Lock the page to one viewport across the intro, deal, and flipped views
    — every screen but the row reading sits inside a single dvh with no scroll.
-   The reading-row state adds .stage-out on .spread-stage, which lifts the lock. */
-.stage:not(:has(.spread-stage.stage-out)) {
-  height: 100dvh; min-height: 0; overflow: hidden;
+   The reading-row state adds .stage-out on .spread-stage, which lifts the lock.
+   Only applied on hover-capable devices (desktop): on touch the on-screen
+   keyboard shrinks the visible viewport and a locked page hides the question
+   input behind it, so mobile gets natural scrolling. */
+@media (hover: hover) {
+  .stage:not(:has(.spread-stage.stage-out)) {
+    height: 100dvh; min-height: 0; overflow: hidden;
+  }
 }
 /* drifting starfield */
 .starfield { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }

@@ -58,7 +58,7 @@ export function SpreadScreen({
             </div>
           </div>
         ) : null}
-        {question ? (
+        {question && dealState !== "ready" ? (
           <div className="spread-question">{"“" + question + "”"}</div>
         ) : null}
 
