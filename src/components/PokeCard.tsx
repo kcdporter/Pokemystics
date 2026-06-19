@@ -1,5 +1,5 @@
 /* The card: holographic foil that tilts to the cursor, a 3D flip-and-spin
-   reveal, levitation, parallax, and a particle burst. */
+   reveal, levitation, and parallax. */
 import {
   useState,
   useRef,
@@ -12,30 +12,6 @@ import {
 import { TYPES, type Card } from "../data/cards";
 import { Sigil, CardBack } from "./Sigil";
 
-function Spark({ i }: { i: number }) {
-  const ang = (Math.PI * 2 * i) / 18 + Math.random() * 0.4;
-  const dist = 60 + Math.random() * 120;
-  const dx = Math.cos(ang) * dist;
-  const dy = Math.sin(ang) * dist;
-  const dur = 0.7 + Math.random() * 0.7;
-  const size = 4 + Math.random() * 6;
-  return (
-    <span
-      className="spark"
-      style={
-        {
-          "--dx": dx + "px",
-          "--dy": dy + "px",
-          "--dur": dur + "s",
-          width: size,
-          height: size,
-          animationDelay: Math.random() * 0.06 + "s",
-        } as CSSProperties
-      }
-    />
-  );
-}
-
 export interface PokeCardProps {
   card: Card;
   reversed: boolean;
@@ -45,7 +21,6 @@ export interface PokeCardProps {
   levDelay?: number;
   intensity?: number;
   foil?: number;
-  particles?: boolean;
   reduceMotion?: boolean;
   dealt?: boolean;
 }
@@ -59,30 +34,23 @@ export function PokeCard({
   levDelay = 0,
   intensity = 1,
   foil = 1,
-  particles = true,
   reduceMotion = false,
   dealt = true,
 }: PokeCardProps) {
   const outerRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 });
-  const [bursting, setBursting] = useState(false);
   const [justRevealed, setJustRevealed] = useState(false);
   // seed with the current value so a card that's already revealed on load
   // (a restored reading) doesn't replay the reveal animation
   const prevRevealed = useRef(revealed);
 
-  // fire the burst + reveal animation the moment we turn the card over
+  // fire the reveal animation the moment we turn the card over
   useEffect(() => {
     if (revealed && !prevRevealed.current) {
-      setBursting(true);
       setJustRevealed(true);
-      const t1 = setTimeout(() => setBursting(false), 1300);
-      const t2 = setTimeout(() => setJustRevealed(false), 1300);
+      const t = setTimeout(() => setJustRevealed(false), 1300);
       prevRevealed.current = revealed;
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
+      return () => clearTimeout(t);
     }
     prevRevealed.current = revealed;
   }, [revealed]);
@@ -153,14 +121,6 @@ export function PokeCard({
       }
     >
       <div className="halo" />
-      {/* particle burst */}
-      {bursting && particles ? (
-        <div className="burst">
-          {Array.from({ length: 22 }).map((_, i) => (
-            <Spark key={i} i={i} />
-          ))}
-        </div>
-      ) : null}
       <div
         className={"lev-wrap" + (reduceMotion ? "" : " levitate")}
         style={levStyle}

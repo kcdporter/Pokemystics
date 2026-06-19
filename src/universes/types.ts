@@ -17,6 +17,8 @@ export interface Universe {
   deck: Card[];
   /** Positions of the spread; length determines how many cards are drawn. */
   positions: Position[];
+  /** Shape of the spread layout, used in intro copy (e.g. "line", "cross"). */
+  spreadShape: string;
   /** Whether each card carries a "shadow voice" (second prose layer). */
   hasShadowVoice: boolean;
   /** Whether the synthesis includes a type-balance reading. */

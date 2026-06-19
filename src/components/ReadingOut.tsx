@@ -2,8 +2,9 @@
 import { Fragment, useCallback, useMemo, useState, type CSSProperties } from "react";
 import { TYPES, type TypeName } from "../data/cards";
 import { buildShareUrl } from "../share";
-import type { DrawnCard } from "../types";
+import type { DrawnCard, Tweaks } from "../types";
 import type { Universe } from "../universes";
+import { PokeCard } from "./PokeCard";
 
 // Headline clause pools. Each entry follows plural keywords (so verb agreement is plural).
 // Past pool uses past-tense verbs, present uses present-tense, future uses "will + base".
@@ -178,10 +179,10 @@ const TREND_TONE: Record<Trend, "good" | "warn"> = {
 
 // Gen II per-position verb pools for the 5-card day/night spread.
 // One verb is picked per position, stable per draw.
-const DAWN_VERBS = ["opened with", "rose under", "broke as", "first lit on"];
-const DAY_VERBS = ["holds", "shines on", "carries", "walks through"];
-const DUSK_VERBS = ["turns through", "shifts into", "softens to", "settles on"];
-const NIGHT_VERBS = ["hides", "reveals", "veils with", "keeps close to"];
+const DAWN_VERBS = ["rooted you in", "began with", "rose out of", "took its first breath from"];
+const DAY_VERBS = ["holds you in", "shines on", "carries you through", "walks you through"];
+const DUSK_VERBS = ["crosses you with", "stands in the way as", "tests you with", "presses against you as"];
+const NIGHT_VERBS = ["hides", "works beneath as", "veils itself in", "keeps close to"];
 const STAR_VERBS = ["points to", "shines toward", "guides through", "steadies upon"];
 
 // Spoken flavor for each dominant type — used only when a type clearly dominates.
@@ -240,6 +241,7 @@ export function ReadingOut({
   universe,
   draw,
   question,
+  tweaks,
   onAgain,
   onNew,
   show,
@@ -247,6 +249,7 @@ export function ReadingOut({
   universe: Universe;
   draw: DrawnCard[];
   question: string;
+  tweaks: Tweaks;
   onAgain: () => void;
   onNew: () => void;
   show: boolean;
@@ -349,13 +352,24 @@ export function ReadingOut({
               key={i}
               style={{ "--type": TYPES[d.card.types[0]].c } as CSSProperties}
             >
-              <div className="ro-pos">{positions[i].label}</div>
+              <div className="ro-card-slot">
+                <PokeCard
+                  card={d.card}
+                  reversed={d.reversed}
+                  revealed
+                  intensity={tweaks.tilt}
+                  foil={tweaks.foil}
+                  reduceMotion={tweaks.reduceMotion}
+                />
+              </div>
               <div>
-                <div className="ro-kicker">{keyList[0]}</div>
+                <div className="ro-kicker">
+                  {positions[i].label} · {keyList[0]}
+                </div>
                 <div className="ro-card-name">
                   {d.card.mon}
                   <span style={{ color: "var(--ink-dim)", fontSize: "16px", fontStyle: "italic" }}>
-                    {"  — " + d.card.arcana}
+                    {" · " + d.card.arcana}
                   </span>
                 </div>
                 <div className="ro-card-meta">

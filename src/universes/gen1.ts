@@ -10,6 +10,7 @@ export const GEN1: Universe = {
   tagline: "Kanto · Major Arcana",
   deck: CARDS,
   positions: POSITIONS,
+  spreadShape: "line",
   hasShadowVoice: false,
   hasTypeBalance: false,
 };

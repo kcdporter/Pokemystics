@@ -14,10 +14,30 @@ import { parseSharedReading } from "./share";
 import { Starfield } from "./components/Starfield";
 import { ThemePicker } from "./components/ThemePicker";
 import { UniversePicker } from "./components/UniversePicker";
-import { ShuffleDeck } from "./components/ShuffleDeck";
 import { IntroScreen } from "./components/IntroScreen";
 import { SpreadScreen } from "./components/SpreadScreen";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { ConstellationField, type SelectedConstellation } from "./components/ConstellationField";
+import { SPRITE_DEXES } from "./data/sprites";
+
+export type DealState = "waiting" | "dealing" | "ready";
+
+// Spread target positions per universe (% of viewport). These coordinate
+// the constellation field and the card layout during the deal sequence.
+const SPREAD_TARGETS: Record<number, { x: number; y: number }[]> = {
+  3: [
+    { x: 22, y: 42 },
+    { x: 50, y: 42 },
+    { x: 78, y: 42 },
+  ],
+  5: [
+    { x: 28, y: 42 }, // Dawn left
+    { x: 50, y: 42 }, // Day center
+    { x: 72, y: 42 }, // Dusk right
+    { x: 50, y: 72 }, // Night bottom
+    { x: 50, y: 12 }, // Star top
+  ],
+};
 
 const THEME_KEY = "pm-theme";
 const UNIVERSE_KEY = "pm-universe";
@@ -138,6 +158,9 @@ export default function App() {
     saved ? saved.revealed : new Array(currentUniverse.positions.length).fill(false),
   );
   const [showReading, setShowReading] = useState(saved ? saved.showReading : false);
+  // Restored sessions skip the click-to-deal ritual and jump straight to the
+  // materialized cards (or the reading if showReading was also true).
+  const [dealState, setDealState] = useState<DealState>(saved ? "ready" : "waiting");
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
   const [tweaks, setTweaks] = useState<Tweaks>(loadTweaks);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -226,34 +249,23 @@ export default function App() {
       picks.push({ card: c, reversed: Math.random() < tweaks.reversedChance / 100 });
     }
     setDraw(picks);
-    setRevealed(new Array(currentUniverse.positions.length).fill(false));
+    setRevealed(new Array(currentUniverse.positions.length).fill(true));
     setShowReading(false);
-    setPhase("shuffling");
-    const delay = tweaks.reduceMotion ? 350 : 2200;
-    setTimeout(() => setPhase("spread"), delay);
-    // release the lock once the shuffle has settled
-    setTimeout(() => {
-      drawLockRef.current = false;
-    }, delay + 400);
-  }, [currentUniverse, tweaks.reduceMotion, tweaks.reversedChance]);
+    setDealState("waiting");
+    setPhase("spread");
+    // reset scroll so a "Draw again" from the bottom of the previous reading
+    // doesn't strand the user mid-page on the new spread
+    window.scrollTo({ top: 0, behavior: "instant" });
+    drawLockRef.current = false;
+  }, [currentUniverse, tweaks.reversedChance]);
 
-  const reveal = useCallback((i: number) => {
-    setRevealed((r) => {
-      if (r[i]) return r;
-      const n = r.slice();
-      n[i] = true;
-      return n;
-    });
-  }, []);
+  const beginDealing = useCallback(() => {
+    setDealState("dealing");
+    const settle = tweaks.reduceMotion ? 200 : 1600;
+    setTimeout(() => setDealState("ready"), settle);
+  }, [tweaks.reduceMotion]);
 
-  // when all revealed → show reading
-  useEffect(() => {
-    const n = currentUniverse.positions.length;
-    if (phase === "spread" && revealed.every(Boolean) && draw.length === n) {
-      const t = setTimeout(() => setShowReading(true), 900);
-      return () => clearTimeout(t);
-    }
-  }, [revealed, phase, draw.length, currentUniverse]);
+  const onSeeReading = useCallback(() => setShowReading(true), []);
 
   const drawAgain = useCallback(() => consult(), [consult]);
   const newQuestion = useCallback(() => {
@@ -261,6 +273,7 @@ export default function App() {
     setRevealed(new Array(currentUniverse.positions.length).fill(false));
     setDraw([]);
     setShowReading(false);
+    setDealState("waiting");
     setQuestion("");
   }, [currentUniverse]);
   // Switching universes mid-reading would render the old draw against the new
@@ -272,25 +285,56 @@ export default function App() {
     setDraw([]);
     setRevealed(new Array(getUniverse(id).positions.length).fill(false));
     setShowReading(false);
+    setDealState("waiting");
     setQuestion("");
     localStorage.removeItem(STATE_KEY);
   }, []);
-  const revealAll = useCallback(
-    () => setRevealed(new Array(currentUniverse.positions.length).fill(true)),
+
+  // Constellation field: scattered ambient backdrop using all the universe's
+  // sprite-having deck Pokémon; selected mode brings the current draw to the
+  // spread positions during dealing/ready states.
+  const fieldDexes = useMemo(
+    () => currentUniverse.deck.map((c) => c.dex).filter((d) => SPRITE_DEXES.has(d)),
     [currentUniverse],
   );
+  const spreadTargets = useMemo(
+    () => SPREAD_TARGETS[currentUniverse.positions.length] ?? [],
+    [currentUniverse.positions.length],
+  );
+  const selectedConstellations = useMemo<SelectedConstellation[] | undefined>(() => {
+    if (phase !== "spread" || dealState === "waiting" || showReading) return undefined;
+    if (draw.length === 0 || spreadTargets.length === 0) return undefined;
+    return draw.map((d, i) => {
+      const t = spreadTargets[i] ?? spreadTargets[spreadTargets.length - 1];
+      return { dex: d.card.dex, x: t.x, y: t.y, size: 385 };
+    });
+  }, [phase, dealState, showReading, draw, spreadTargets]);
 
   return (
     <div className="stage">
       <Starfield />
+      <ConstellationField dexes={fieldDexes} selected={selectedConstellations} />
       <div className="topbar">
-        <div className="brand">
+        <button
+          type="button"
+          className="brand brand-btn"
+          onClick={newQuestion}
+          aria-label="Return to start"
+        >
           <span className="mark">Pokemystics</span>
           <span className="sub">Cartomancy</span>
-        </div>
+        </button>
         <div className="topbar-right">
-          <UniversePicker universe={universe} setUniverse={changeUniverse} />
-          <ThemePicker theme={theme} setTheme={setTheme} />
+          {phase === "spread" && dealState === "ready" ? (
+            <div className="topbar-heading">
+              {currentUniverse.positions.map((p) => p.label).join(" · ")}
+            </div>
+          ) : (
+            <>
+              <UniversePicker universe={universe} setUniverse={changeUniverse} />
+              <ThemePicker theme={theme} setTheme={setTheme} />
+            </>
+          )}
           <button
             className="gear"
             aria-label="Settings"
@@ -318,28 +362,28 @@ export default function App() {
       </div>
 
       {phase === "intro" ? (
-        <IntroScreen question={question} setQuestion={setQuestion} onConsult={consult} />
-      ) : null}
-
-      {phase === "shuffling" ? (
-        <div className="reading-stage">
-          <ShuffleDeck />
-        </div>
+        <IntroScreen
+          universe={currentUniverse}
+          question={question}
+          setQuestion={setQuestion}
+          onConsult={consult}
+        />
       ) : null}
 
       {phase === "spread" ? (
         <SpreadScreen
           universe={currentUniverse}
           draw={draw}
-          revealed={revealed}
-          reveal={reveal}
           parallax={parallax}
           tweaks={tweaks}
           question={question}
           showReading={showReading}
+          dealState={dealState}
+          spreadTargets={spreadTargets}
+          beginDealing={beginDealing}
+          onSeeReading={onSeeReading}
           onAgain={drawAgain}
           onNew={newQuestion}
-          revealAll={revealAll}
         />
       ) : null}
     </div>

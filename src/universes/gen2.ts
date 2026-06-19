@@ -6,10 +6,10 @@ import type { Card, Position } from "../data/cards";
 import type { Universe } from "./types";
 
 const POSITIONS_GEN2: Position[] = [
-  { key: "dawn", label: "Dawn", sub: "the origin", line: "Where you began" },
+  { key: "dawn", label: "Dawn", sub: "the root", line: "Where this began" },
   { key: "day", label: "Day", sub: "the waking life", line: "Where you stand now" },
-  { key: "dusk", label: "Dusk", sub: "the turn", line: "What is shifting" },
-  { key: "night", label: "Night", sub: "the hidden truth", line: "What lies beneath" },
+  { key: "dusk", label: "Dusk", sub: "the challenge", line: "What stands across the path" },
+  { key: "night", label: "Night", sub: "the hidden", line: "What works beneath" },
   { key: "star", label: "Star", sub: "the guidance", line: "What steers you onward" },
 ];
 
@@ -330,6 +330,7 @@ export const GEN2: Universe = {
   tagline: "Johto · Day & Night",
   deck: DECK_GEN2,
   positions: POSITIONS_GEN2,
+  spreadShape: "cross",
   hasShadowVoice: true,
   hasTypeBalance: true,
 };
